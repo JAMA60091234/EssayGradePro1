@@ -56,6 +56,7 @@ export default function Submit() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
       toast({
         title: "Success!",
         description: "Your essay has been evaluated successfully.",
