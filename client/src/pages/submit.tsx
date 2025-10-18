@@ -54,14 +54,20 @@ export default function Submit() {
       setCurrentStep(3); // Move to submission step
       return await apiRequest("POST", "/api/evaluations/submit", data);
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
       toast({
         title: "Success!",
         description: "Your essay has been evaluated successfully.",
       });
-      setLocation(`/results/${data.evaluationId}`);
+      // Navigate to results page with the correct evaluation ID
+      if (data?.evaluationId) {
+        setLocation(`/results/${data.evaluationId}`);
+      } else {
+        // Fallback to dashboard if no ID is provided
+        setLocation("/");
+      }
     },
     onError: (error: Error) => {
       toast({

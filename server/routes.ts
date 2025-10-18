@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detailedFeedback: evaluationResult.detailedFeedback,
       });
 
-      res.json({
+      res.status(200).json({
         success: true,
         evaluationId: evaluation.id,
         message: "Essay evaluated successfully",
