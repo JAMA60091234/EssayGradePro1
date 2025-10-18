@@ -2,17 +2,63 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Moon, Sun, Monitor, Cloud, LogOut, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
 
+  const { data: authStatus } = useQuery({
+    queryKey: ["/api/auth/status"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/status");
+      return response.json();
+    },
+  });
+
+  const handleLogout = () => {
+    window.location.href = "/auth/logout";
+  };
+
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your preferences and account settings.</p>
+        <p className="text-muted-foreground">Manage your application preferences</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Account
+          </CardTitle>
+          <CardDescription>Your account information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Email</span>
+              <span className="font-medium">{authStatus?.user?.email || "Not signed in"}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Name</span>
+              <span className="font-medium">{authStatus?.user?.name || "N/A"}</span>
+            </div>
+          </div>
+          <div className="pt-4 border-t border-border">
+            <Button 
+              variant="destructive" 
+              onClick={handleLogout}
+              className="w-full"
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

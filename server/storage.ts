@@ -1,98 +1,127 @@
-import {
-  type Essay,
-  type InsertEssay,
-  type Rubric,
-  type InsertRubric,
-  type Evaluation,
-  type InsertEvaluation,
-  type EvaluationWithDetails,
-} from "@shared/schema";
-import { randomUUID } from "crypto";
 
-export interface IStorage {
-  // Essays
-  getEssay(id: string): Promise<Essay | undefined>;
+import type {
+  InsertUser,
+  User,
+  InsertEssay,
+  Essay,
+  InsertRubric,
+  Rubric,
+  InsertEvaluation,
+  Evaluation,
+  EvaluationWithDetails,
+} from "../shared/schema";
+
+interface IStorage {
+  // User operations
+  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | null>;
+  getUserByGoogleId(googleId: string): Promise<User | null>;
+  
+  // Essay operations
   createEssay(essay: InsertEssay): Promise<Essay>;
-  getAllEssays(): Promise<Essay[]>;
+  getEssayById(id: string): Promise<Essay | null>;
 
-  // Rubrics
-  getRubric(id: string): Promise<Rubric | undefined>;
+  // Rubric operations
   createRubric(rubric: InsertRubric): Promise<Rubric>;
-  getAllRubrics(): Promise<Rubric[]>;
+  getRubricById(id: string): Promise<Rubric | null>;
 
-  // Evaluations
-  getEvaluation(id: string): Promise<Evaluation | undefined>;
-  getEvaluationWithDetails(id: string): Promise<EvaluationWithDetails | undefined>;
+  // Evaluation operations
   createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation>;
-  getAllEvaluations(): Promise<Evaluation[]>;
-  getAllEvaluationsWithDetails(): Promise<EvaluationWithDetails[]>;
-  getRecentEvaluationsWithDetails(limit?: number): Promise<EvaluationWithDetails[]>;
+  getEvaluationById(id: string): Promise<Evaluation | null>;
+  getEvaluationWithDetails(id: string): Promise<EvaluationWithDetails | null>;
+  getRecentEvaluationsWithDetails(userId: string, limit: number): Promise<EvaluationWithDetails[]>;
+  getAllEvaluationsWithDetails(userId: string): Promise<EvaluationWithDetails[]>;
 }
 
-export class MemStorage implements IStorage {
-  private essays: Map<string, Essay>;
-  private rubrics: Map<string, Rubric>;
-  private evaluations: Map<string, Evaluation>;
+// In-memory storage implementation
+class MemStorage implements IStorage {
+  private users: Map<string, User> = new Map();
+  private essays: Map<string, Essay> = new Map();
+  private rubrics: Map<string, Rubric> = new Map();
+  private evaluations: Map<string, Evaluation> = new Map();
 
-  constructor() {
-    this.essays = new Map();
-    this.rubrics = new Map();
-    this.evaluations = new Map();
+  // User operations
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const user: User = {
+      id: crypto.randomUUID(),
+      ...insertUser,
+      createdAt: new Date(),
+    };
+    this.users.set(user.id, user);
+    return user;
   }
 
-  // Essays
-  async getEssay(id: string): Promise<Essay | undefined> {
-    return this.essays.get(id);
+  async getUserByEmail(email: string): Promise<User | null> {
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return null;
   }
 
+  async getUserByGoogleId(googleId: string): Promise<User | null> {
+    for (const user of this.users.values()) {
+      if (user.googleId === googleId) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  // Essay operations
   async createEssay(insertEssay: InsertEssay): Promise<Essay> {
-    const id = randomUUID();
     const essay: Essay = {
+      id: crypto.randomUUID(),
       ...insertEssay,
-      id,
       submittedAt: new Date(),
     };
-    this.essays.set(id, essay);
+    this.essays.set(essay.id, essay);
     return essay;
   }
 
-  async getAllEssays(): Promise<Essay[]> {
-    return Array.from(this.essays.values());
+  async getEssayById(id: string): Promise<Essay | null> {
+    return this.essays.get(id) || null;
   }
 
-  // Rubrics
-  async getRubric(id: string): Promise<Rubric | undefined> {
-    return this.rubrics.get(id);
-  }
-
+  // Rubric operations
   async createRubric(insertRubric: InsertRubric): Promise<Rubric> {
-    const id = randomUUID();
     const rubric: Rubric = {
+      id: crypto.randomUUID(),
       ...insertRubric,
-      id,
       createdAt: new Date(),
     };
-    this.rubrics.set(id, rubric);
+    this.rubrics.set(rubric.id, rubric);
     return rubric;
   }
 
-  async getAllRubrics(): Promise<Rubric[]> {
-    return Array.from(this.rubrics.values());
+  async getRubricById(id: string): Promise<Rubric | null> {
+    return this.rubrics.get(id) || null;
   }
 
-  // Evaluations
-  async getEvaluation(id: string): Promise<Evaluation | undefined> {
-    return this.evaluations.get(id);
+  // Evaluation operations
+  async createEvaluation(insertEvaluation: InsertEvaluation): Promise<Evaluation> {
+    const evaluation: Evaluation = {
+      id: crypto.randomUUID(),
+      ...insertEvaluation,
+      evaluatedAt: new Date(),
+    };
+    this.evaluations.set(evaluation.id, evaluation);
+    return evaluation;
   }
 
-  async getEvaluationWithDetails(id: string): Promise<EvaluationWithDetails | undefined> {
+  async getEvaluationById(id: string): Promise<Evaluation | null> {
+    return this.evaluations.get(id) || null;
+  }
+
+  async getEvaluationWithDetails(id: string): Promise<EvaluationWithDetails | null> {
     const evaluation = this.evaluations.get(id);
-    if (!evaluation) return undefined;
+    if (!evaluation) return null;
 
-    const essay = await this.getEssay(evaluation.essayId);
-    const rubric = await this.getRubric(evaluation.rubricId);
+    const essay = this.essays.get(evaluation.essayId);
+    const rubric = this.rubrics.get(evaluation.rubricId);
 
-    if (!essay || !rubric) return undefined;
+    if (!essay || !rubric) return null;
 
     return {
       ...evaluation,
@@ -101,47 +130,38 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async createEvaluation(insertEvaluation: InsertEvaluation): Promise<Evaluation> {
-    const id = randomUUID();
-    const evaluation: Evaluation = {
-      ...insertEvaluation,
-      id,
-      evaluatedAt: new Date(),
-    };
-    this.evaluations.set(id, evaluation);
-    return evaluation;
-  }
+  async getRecentEvaluationsWithDetails(userId: string, limit: number): Promise<EvaluationWithDetails[]> {
+    const userEvaluations = Array.from(this.evaluations.values())
+      .filter(e => e.userId === userId)
+      .sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime())
+      .slice(0, limit);
 
-  async getAllEvaluations(): Promise<Evaluation[]> {
-    return Array.from(this.evaluations.values());
-  }
-
-  async getAllEvaluationsWithDetails(): Promise<EvaluationWithDetails[]> {
-    const evaluations = Array.from(this.evaluations.values());
-    const evaluationsWithDetails: EvaluationWithDetails[] = [];
-
-    for (const evaluation of evaluations) {
-      const essay = await this.getEssay(evaluation.essayId);
-      const rubric = await this.getRubric(evaluation.rubricId);
-
+    const results: EvaluationWithDetails[] = [];
+    for (const evaluation of userEvaluations) {
+      const essay = this.essays.get(evaluation.essayId);
+      const rubric = this.rubrics.get(evaluation.rubricId);
       if (essay && rubric) {
-        evaluationsWithDetails.push({
-          ...evaluation,
-          essay,
-          rubric,
-        });
+        results.push({ ...evaluation, essay, rubric });
       }
     }
-
-    return evaluationsWithDetails.sort(
-      (a, b) => new Date(b.evaluatedAt).getTime() - new Date(a.evaluatedAt).getTime()
-    );
+    return results;
   }
 
-  async getRecentEvaluationsWithDetails(limit: number = 10): Promise<EvaluationWithDetails[]> {
-    const all = await this.getAllEvaluationsWithDetails();
-    return all.slice(0, limit);
+  async getAllEvaluationsWithDetails(userId: string): Promise<EvaluationWithDetails[]> {
+    const userEvaluations = Array.from(this.evaluations.values())
+      .filter(e => e.userId === userId)
+      .sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime());
+
+    const results: EvaluationWithDetails[] = [];
+    for (const evaluation of userEvaluations) {
+      const essay = this.essays.get(evaluation.essayId);
+      const rubric = this.rubrics.get(evaluation.rubricId);
+      if (essay && rubric) {
+        results.push({ ...evaluation, essay, rubric });
+      }
+    }
+    return results;
   }
 }
 
-export const storage = new MemStorage();
+export const storage: IStorage = new MemStorage();
