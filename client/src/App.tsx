@@ -29,30 +29,10 @@ function AuthenticatedRouter() {
     retry: false,
   });
 
-  useEffect(() => {
-    if (!isLoading && !authStatus?.authenticated && location !== "/login") {
-      setLocation("/login");
-    }
-  }, [authStatus, isLoading, location, setLocation]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!authStatus?.authenticated && location !== "/login") {
-    return null;
-  }
+  // Authentication removed - no redirect needed
 
   return (
     <Switch>
-      <Route path="/login" component={Login} />
       <Route path="/" component={Dashboard} />
       <Route path="/submit" component={Submit} />
       <Route path="/history" component={History} />
@@ -65,17 +45,10 @@ function AuthenticatedRouter() {
 }
 
 function AppContent() {
-  const [location] = useLocation();
-  const isLoginPage = location === "/login";
-
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
-
-  if (isLoginPage) {
-    return <AuthenticatedRouter />;
-  }
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>

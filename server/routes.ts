@@ -32,12 +32,10 @@ const BASE_URL = process.env.REPLIT_DEPLOYMENT
 const SESSION_SECRET = process.env.SESSION_SECRET || "your-secret-key-change-this-in-production";
 const USE_GOOGLE = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
-// Middleware to check if user is authenticated
+// Middleware to check if user is authenticated (disabled)
 function requireAuth(req: any, res: any, next: any) {
-  if (req.isAuthenticated?.()) {
-    return next();
-  }
-  return res.status(401).json({ error: "Authentication required" });
+  // Authentication disabled - allow all requests
+  return next();
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -127,40 +125,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // User info middleware
+  // User info middleware (authentication disabled - use anonymous user)
   app.use((req, res, next) => {
-    if (req.user) {
-      (req as any).userId = req.user.id;
-      (req as any).userEmail = req.user.email;
-      (req as any).userName = req.user.name;
-    }
+    (req as any).userId = "anonymous";
+    (req as any).userEmail = "anonymous@example.com";
+    (req as any).userName = "Anonymous User";
     next();
   });
 
-  // GET /api/auth/status - Check authentication status
+  // GET /api/auth/status - Check authentication status (authentication disabled)
   app.get("/api/auth/status", (req, res) => {
-    const isAuthenticated = USE_GOOGLE && req.isAuthenticated?.();
-
-    if (isAuthenticated && (req as any).userId) {
-      res.json({
-        authenticated: true,
-        user: {
-          id: (req as any).userId,
-          email: (req as any).userEmail,
-          name: (req as any).userName,
-        },
-        providers: {
-          google: USE_GOOGLE,
-        }
-      });
-    } else {
-      res.json({ 
-        authenticated: false,
-        providers: {
-          google: USE_GOOGLE,
-        }
-      });
-    }
+    res.json({ 
+      authenticated: true,
+      user: {
+        id: "anonymous",
+        email: "anonymous@example.com",
+        name: "Anonymous User",
+      },
+      providers: {
+        google: false,
+      }
+    });
   });
 
   // Schema for essay submission
