@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Dashboard from "@/pages/dashboard";
 import Submit from "@/pages/submit";
 import History from "@/pages/history";
+import Analytics from "@/pages/analytics";
 import Results from "@/pages/results";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/submit" component={Submit} />
       <Route path="/history" component={History} />
+      <Route path="/analytics" component={Analytics} />
       <Route path="/results/:id" component={Results} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />

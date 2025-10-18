@@ -77,8 +77,19 @@ export default function Submit() {
     if (!file) return;
 
     setEssayFile(file);
-    const text = await file.text();
-    form.setValue("essayContent", text);
+    
+    // Handle DOCX files specially
+    if (file.name.toLowerCase().endsWith('.docx')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      form.setValue("essayContent", `DOCX_FILE:${base64}`);
+    } else {
+      const text = await file.text();
+      form.setValue("essayContent", text);
+    }
+    
     if (!form.getValues("essayTitle")) {
       form.setValue("essayTitle", file.name.replace(/\.[^/.]+$/, ""));
     }
@@ -89,8 +100,19 @@ export default function Submit() {
     if (!file) return;
 
     setRubricFile(file);
-    const text = await file.text();
-    form.setValue("rubricContent", text);
+    
+    // Handle DOCX files specially
+    if (file.name.toLowerCase().endsWith('.docx')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      form.setValue("rubricContent", `DOCX_FILE:${base64}`);
+    } else {
+      const text = await file.text();
+      form.setValue("rubricContent", text);
+    }
+    
     if (!form.getValues("rubricName")) {
       form.setValue("rubricName", file.name.replace(/\.[^/.]+$/, ""));
     }

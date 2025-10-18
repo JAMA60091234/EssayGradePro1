@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { evaluateEssay, parseRubric } from "./gemini";
 import { getFileContent } from "./google-drive";
+import { isDocxMarker, extractDocxBase64, parseDocxFromBase64 } from "./file-parser";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,9 +22,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = submitEvaluationSchema.parse(req.body);
 
-      // Get essay content (from Drive if file ID provided)
+      // Get essay content (from Drive if file ID provided, or parse DOCX if needed)
       let essayContent = data.essayContent;
-      if (data.essayDriveFileId) {
+      if (isDocxMarker(essayContent)) {
+        const base64 = extractDocxBase64(essayContent);
+        essayContent = await parseDocxFromBase64(base64);
+      } else if (data.essayDriveFileId) {
         try {
           essayContent = await getFileContent(data.essayDriveFileId);
         } catch (error) {
@@ -32,9 +36,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Get rubric content (from Drive if file ID provided)
+      // Get rubric content (from Drive if file ID provided, or parse DOCX if needed)
       let rubricContent = data.rubricContent;
-      if (data.rubricDriveFileId) {
+      if (isDocxMarker(rubricContent)) {
+        const base64 = extractDocxBase64(rubricContent);
+        rubricContent = await parseDocxFromBase64(base64);
+      } else if (data.rubricDriveFileId) {
         try {
           rubricContent = await getFileContent(data.rubricDriveFileId);
         } catch (error) {

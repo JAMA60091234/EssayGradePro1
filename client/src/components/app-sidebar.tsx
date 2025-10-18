@@ -1,4 +1,4 @@
-import { Home, Upload, History, Settings } from "lucide-react";
+import { Home, Upload, History, Settings, TrendingUp } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -30,6 +30,12 @@ const menuItems = [
     url: "/history",
     icon: History,
     testId: "nav-history",
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: TrendingUp,
+    testId: "nav-analytics",
   },
   {
     title: "Settings",
