@@ -1,7 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogIn } from "lucide-react";
 import { FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,12 +17,7 @@ export default function Login() {
     window.location.href = "/auth/google";
   };
 
-  const handleAuth0Login = () => {
-    window.location.href = "/login";
-  };
-
   const hasGoogle = authStatus?.providers?.google;
-  const hasAuth0 = authStatus?.providers?.auth0;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
@@ -47,7 +41,7 @@ export default function Login() {
               Sign in to access your essay evaluations and receive AI-powered feedback
             </p>
             
-            {hasGoogle && (
+            {hasGoogle ? (
               <Button
                 onClick={handleGoogleLogin}
                 className="w-full h-12 text-lg"
@@ -75,24 +69,10 @@ export default function Login() {
                 </svg>
                 Sign in with Google
               </Button>
-            )}
-
-            {hasAuth0 && (
-              <Button
-                onClick={handleAuth0Login}
-                className="w-full h-12 text-lg"
-                size="lg"
-                data-testid="button-auth0-signin"
-              >
-                <LogIn className="w-5 h-5 mr-3" />
-                Sign in with Auth0
-              </Button>
-            )}
-
-            {!hasGoogle && !hasAuth0 && (
+            ) : (
               <div className="text-center text-muted-foreground">
                 <p className="mb-2">Authentication not configured</p>
-                <p className="text-sm">Please set up GOOGLE_CLIENT_ID or AUTH0_CLIENT_ID in Secrets</p>
+                <p className="text-sm">Please set up GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Secrets</p>
               </div>
             )}
           </div>

@@ -9,7 +9,6 @@ import { z } from "zod";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { auth } from "express-openid-connect";
 
 // Extend Express Request to include user
 declare global {
@@ -24,22 +23,15 @@ declare global {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || "";
-const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID || "";
-const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET || "";
 const BASE_URL = process.env.REPL_SLUG 
   ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
   : "http://localhost:5000";
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "your-secret-key-change-this-in-production";
-const USE_AUTH0 = !!(AUTH0_DOMAIN && AUTH0_CLIENT_ID && AUTH0_CLIENT_SECRET);
 const USE_GOOGLE = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
 // Middleware to check if user is authenticated
 function requireAuth(req: any, res: any, next: any) {
-  if (USE_AUTH0 && req.oidc?.isAuthenticated()) {
-    return next();
-  }
   if (req.isAuthenticated?.()) {
     return next();
   }
@@ -47,7 +39,7 @@ function requireAuth(req: any, res: any, next: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup session middleware (required for both strategies)
+  // Setup session middleware
   app.use(session({
     secret: SESSION_SECRET,
     resave: false,
@@ -58,11 +50,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  // Setup Passport for Google OAuth if configured
-  if (USE_GOOGLE) {
-    app.use(passport.initialize());
-    app.use(passport.session());
+  // Setup Passport for Google OAuth
+  app.use(passport.initialize());
+  app.use(passport.session());
 
+  if (USE_GOOGLE) {
     passport.use(new GoogleStrategy({
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
@@ -133,50 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // Setup Auth0 if configured
-  if (USE_AUTH0) {
-    const config = {
-      authRequired: false,
-      auth0Logout: true,
-      secret: SESSION_SECRET,
-      baseURL: BASE_URL,
-      clientID: AUTH0_CLIENT_ID,
-      issuerBaseURL: `https://${AUTH0_DOMAIN}`,
-      clientSecret: AUTH0_CLIENT_SECRET,
-      authorizationParams: {
-        response_type: 'code',
-        scope: 'openid profile email',
-      },
-    };
-
-    app.use(auth(config));
-
-    // Middleware to sync Auth0 user with database
-    app.use(async (req, res, next) => {
-      if (req.oidc.isAuthenticated() && req.oidc.user) {
-        const { sub, email, name } = req.oidc.user;
-
-        if (email) {
-          let user = await storage.getUserByGoogleId(sub);
-
-          if (!user) {
-            user = await storage.createUser({
-              email,
-              name: name || null,
-              googleId: sub,
-            });
-          }
-
-          (req as any).userId = user.id;
-          (req as any).userEmail = user.email;
-          (req as any).userName = user.name;
-        }
-      }
-      next();
-    });
-  }
-
-  // Unified user info middleware
+  // User info middleware
   app.use((req, res, next) => {
     if (req.user) {
       (req as any).userId = req.user.id;
@@ -188,10 +137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/auth/status - Check authentication status
   app.get("/api/auth/status", (req, res) => {
-    const isAuth0Authenticated = USE_AUTH0 && req.oidc?.isAuthenticated();
-    const isGoogleAuthenticated = USE_GOOGLE && req.isAuthenticated?.();
+    const isAuthenticated = USE_GOOGLE && req.isAuthenticated?.();
 
-    if ((isAuth0Authenticated || isGoogleAuthenticated) && (req as any).userId) {
+    if (isAuthenticated && (req as any).userId) {
       res.json({
         authenticated: true,
         user: {
@@ -201,7 +149,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         providers: {
           google: USE_GOOGLE,
-          auth0: USE_AUTH0,
         }
       });
     } else {
@@ -209,7 +156,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authenticated: false,
         providers: {
           google: USE_GOOGLE,
-          auth0: USE_AUTH0,
         }
       });
     }
