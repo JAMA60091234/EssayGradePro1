@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -5,17 +6,24 @@ import { evaluateEssay, parseRubric } from "./gemini";
 import { getFileContent } from "./google-drive";
 import { isDocxMarker, extractDocxBase64, parseDocxFromBase64 } from "./file-parser";
 import { z } from "zod";
+import session from "express-session";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { auth } from "express-openid-connect";
 
-// Extend session data to include user info
-declare module 'express-openid-connect' {
-  interface SessionData {
-    userId?: string;
-    userEmail?: string;
-    userName?: string;
+// Extend Express Request to include user
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      name: string | null;
+    }
   }
 }
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || "";
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID || "";
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET || "";
@@ -23,64 +31,167 @@ const BASE_URL = process.env.REPL_SLUG
   ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
   : "http://localhost:5000";
 
+const SESSION_SECRET = process.env.SESSION_SECRET || "your-secret-key-change-this-in-production";
+const USE_AUTH0 = !!(AUTH0_DOMAIN && AUTH0_CLIENT_ID && AUTH0_CLIENT_SECRET);
+const USE_GOOGLE = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+
 // Middleware to check if user is authenticated
 function requireAuth(req: any, res: any, next: any) {
-  if (!req.oidc.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
+  if (USE_AUTH0 && req.oidc?.isAuthenticated()) {
+    return next();
   }
-  next();
+  if (req.isAuthenticated?.()) {
+    return next();
+  }
+  return res.status(401).json({ error: "Authentication required" });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Auth0 middleware
-  const config = {
-    authRequired: false,
-    auth0Logout: true,
-    secret: process.env.SESSION_SECRET || "your-secret-key-change-this",
-    baseURL: BASE_URL,
-    clientID: AUTH0_CLIENT_ID,
-    issuerBaseURL: `https://${AUTH0_DOMAIN}`,
-    clientSecret: AUTH0_CLIENT_SECRET,
-    authorizationParams: {
-      response_type: 'code',
-      scope: 'openid profile email',
-    },
-  };
+  // Setup session middleware (required for both strategies)
+  app.use(session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    }
+  }));
 
-  app.use(auth(config));
+  // Setup Passport for Google OAuth if configured
+  if (USE_GOOGLE) {
+    app.use(passport.initialize());
+    app.use(passport.session());
 
-  // Middleware to sync Auth0 user with database
-  app.use(async (req, res, next) => {
-    if (req.oidc.isAuthenticated() && req.oidc.user) {
-      const { sub, email, name } = req.oidc.user;
+    passport.use(new GoogleStrategy({
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: `${BASE_URL}/auth/google/callback`,
+    }, async (accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        if (!email) {
+          return done(new Error("No email found in Google profile"));
+        }
 
-      if (email) {
-        let user = await storage.getUserByGoogleId(sub);
-
+        let user = await storage.getUserByGoogleId(profile.id);
         if (!user) {
           user = await storage.createUser({
             email,
-            name: name || null,
-            googleId: sub,
+            name: profile.displayName || null,
+            googleId: profile.id,
           });
         }
 
-        (req as any).userId = user.id;
-        (req as any).userEmail = user.email;
-        (req as any).userName = user.name;
+        return done(null, {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        });
+      } catch (error) {
+        return done(error as Error);
       }
+    }));
+
+    passport.serializeUser((user: any, done) => {
+      done(null, user.id);
+    });
+
+    passport.deserializeUser(async (id: string, done) => {
+      try {
+        const user = await storage.getUserByGoogleId(id);
+        if (user) {
+          done(null, {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          });
+        } else {
+          done(new Error("User not found"));
+        }
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    // Google OAuth routes
+    app.get("/auth/google",
+      passport.authenticate("google", { scope: ["profile", "email"] })
+    );
+
+    app.get("/auth/google/callback",
+      passport.authenticate("google", { failureRedirect: "/login" }),
+      (req, res) => {
+        res.redirect("/");
+      }
+    );
+
+    app.get("/auth/google/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/login");
+      });
+    });
+  }
+
+  // Setup Auth0 if configured
+  if (USE_AUTH0) {
+    const config = {
+      authRequired: false,
+      auth0Logout: true,
+      secret: SESSION_SECRET,
+      baseURL: BASE_URL,
+      clientID: AUTH0_CLIENT_ID,
+      issuerBaseURL: `https://${AUTH0_DOMAIN}`,
+      clientSecret: AUTH0_CLIENT_SECRET,
+      authorizationParams: {
+        response_type: 'code',
+        scope: 'openid profile email',
+      },
+    };
+
+    app.use(auth(config));
+
+    // Middleware to sync Auth0 user with database
+    app.use(async (req, res, next) => {
+      if (req.oidc.isAuthenticated() && req.oidc.user) {
+        const { sub, email, name } = req.oidc.user;
+
+        if (email) {
+          let user = await storage.getUserByGoogleId(sub);
+
+          if (!user) {
+            user = await storage.createUser({
+              email,
+              name: name || null,
+              googleId: sub,
+            });
+          }
+
+          (req as any).userId = user.id;
+          (req as any).userEmail = user.email;
+          (req as any).userName = user.name;
+        }
+      }
+      next();
+    });
+  }
+
+  // Unified user info middleware
+  app.use((req, res, next) => {
+    if (req.user) {
+      (req as any).userId = req.user.id;
+      (req as any).userEmail = req.user.email;
+      (req as any).userName = req.user.name;
     }
     next();
   });
 
-  // GET /auth/logout - Logout user
-  app.get("/auth/logout", (req, res) => {
-    res.oidc.logout({ returnTo: `${BASE_URL}/login` });
-  });
-
   // GET /api/auth/status - Check authentication status
   app.get("/api/auth/status", (req, res) => {
-    if (req.oidc.isAuthenticated() && (req as any).userId) {
+    const isAuth0Authenticated = USE_AUTH0 && req.oidc?.isAuthenticated();
+    const isGoogleAuthenticated = USE_GOOGLE && req.isAuthenticated?.();
+
+    if ((isAuth0Authenticated || isGoogleAuthenticated) && (req as any).userId) {
       res.json({
         authenticated: true,
         user: {
@@ -88,9 +199,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: (req as any).userEmail,
           name: (req as any).userName,
         },
+        providers: {
+          google: USE_GOOGLE,
+          auth0: USE_AUTH0,
+        }
       });
     } else {
-      res.json({ authenticated: false });
+      res.json({ 
+        authenticated: false,
+        providers: {
+          google: USE_GOOGLE,
+          auth0: USE_AUTH0,
+        }
+      });
     }
   });
 
