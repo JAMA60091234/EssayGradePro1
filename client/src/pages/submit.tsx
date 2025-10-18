@@ -28,6 +28,7 @@ const submitSchema = z.object({
   essayContent: z.string().min(50, "Essay must be at least 50 characters"),
   rubricName: z.string().min(1, "Rubric name is required"),
   rubricContent: z.string().min(10, "Rubric content is required"),
+  gradeLevel: z.string().min(1, "Grade level is required"),
 });
 
 type SubmitFormData = z.infer<typeof submitSchema>;
@@ -46,6 +47,7 @@ export default function Submit() {
       essayContent: "",
       rubricName: "",
       rubricContent: "",
+      gradeLevel: "",
     },
   });
 
@@ -180,6 +182,43 @@ export default function Submit() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Grade Level Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Grade Level</CardTitle>
+              <CardDescription>Select the grade level for this assignment</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="gradeLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Student Grade Level</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        data-testid="select-grade-level"
+                      >
+                        <option value="">Select grade level</option>
+                        <option value="Elementary (K-5)">Elementary (K-5)</option>
+                        <option value="Middle School (6-8)">Middle School (6-8)</option>
+                        <option value="High School (9-12)">High School (9-12)</option>
+                        <option value="College/University">College/University</option>
+                        <option value="Graduate">Graduate</option>
+                      </select>
+                    </FormControl>
+                    <FormDescription>
+                      This helps the AI provide grade-appropriate feedback
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Essay Upload Section */}
             <Card>

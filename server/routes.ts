@@ -13,6 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     essayContent: z.string().min(50),
     rubricName: z.string().min(1),
     rubricContent: z.string().min(10),
+    gradeLevel: z.string().min(1),
     essayDriveFileId: z.string().optional(),
     rubricDriveFileId: z.string().optional(),
   });
@@ -72,7 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         essayContent,
         data.essayTitle,
         rubricContent,
-        rubricCategories
+        rubricCategories,
+        data.gradeLevel
       );
 
       // Create evaluation record

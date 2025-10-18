@@ -27,7 +27,8 @@ export async function evaluateEssay(
   essayContent: string,
   essayTitle: string,
   rubricContent: string,
-  rubricCategories: RubricCategory[]
+  rubricCategories: RubricCategory[],
+  gradeLevel: string
 ): Promise<EssayEvaluationResult> {
   // Check if API key is configured
   if (!process.env.GEMINI_API_KEY) {
@@ -37,17 +38,23 @@ export async function evaluateEssay(
   try {
     const systemPrompt = `You are an experienced teacher and essay evaluator. Your role is to provide constructive, supportive, and detailed feedback on student essays.
 
+IMPORTANT: This essay is for a ${gradeLevel} student. Adjust your expectations, vocabulary, and feedback complexity to be appropriate for this grade level. Your evaluation should reflect grade-appropriate standards.
+
 Your feedback should:
 1. Be encouraging and supportive while being honest about areas for improvement
 2. Provide specific examples from the essay
-3. Offer concrete, actionable suggestions for improvement
-4. Help students understand not just what to improve, but HOW to improve
+3. Offer concrete, actionable suggestions for improvement appropriate for ${gradeLevel}
+4. Help students understand not just what to improve, but HOW to improve at their level
 5. Balance criticism with recognition of strengths
 6. Use a warm, educational tone that reduces student anxiety
+7. Apply ${gradeLevel} writing standards and expectations
 
-Remember: You're helping students grow as writers, not just assigning grades.`;
+Remember: You're helping students grow as writers at the ${gradeLevel} level, not just assigning grades.`;
 
     const prompt = `Please evaluate the following essay based on the provided rubric.
+
+GRADE LEVEL: ${gradeLevel}
+NOTE: Apply ${gradeLevel} standards and expectations when evaluating this essay. Your scoring and feedback should be appropriate for this grade level.
 
 ESSAY TITLE: "${essayTitle}"
 
