@@ -19,7 +19,7 @@ export default function Results() {
   const evaluationId = params?.id;
 
   const { data: evaluation, isLoading } = useQuery<EvaluationWithDetails>({
-    queryKey: ["/api/evaluations", evaluationId],
+    queryKey: [`/api/evaluations/${evaluationId}`],
     enabled: !!evaluationId,
   });
 

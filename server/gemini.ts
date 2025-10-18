@@ -29,6 +29,11 @@ export async function evaluateEssay(
   rubricContent: string,
   rubricCategories: RubricCategory[]
 ): Promise<EssayEvaluationResult> {
+  // Check if API key is configured
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Gemini API key not configured. Please add GEMINI_API_KEY to your environment variables.");
+  }
+
   try {
     const systemPrompt = `You are an experienced teacher and essay evaluator. Your role is to provide constructive, supportive, and detailed feedback on student essays.
 

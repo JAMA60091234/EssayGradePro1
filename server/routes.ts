@@ -94,9 +94,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           details: error.errors,
         });
       } else {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Failed to evaluate essay",
-        });
+        const errorMessage = error instanceof Error ? error.message : "Failed to evaluate essay";
+        
+        // Provide helpful error message for common issues
+        if (errorMessage.includes("API key") || errorMessage.includes("GEMINI_API_KEY")) {
+          res.status(503).json({
+            error: "AI service not configured. Please contact support to enable essay evaluation.",
+          });
+        } else if (errorMessage.includes("PERMISSION_DENIED") || errorMessage.includes("403")) {
+          res.status(503).json({
+            error: "AI service authentication failed. Please contact support.",
+          });
+        } else {
+          res.status(500).json({
+            error: errorMessage,
+          });
+        }
       }
     }
   });

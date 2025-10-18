@@ -51,6 +51,7 @@ export default function Submit() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: SubmitFormData) => {
+      setCurrentStep(3); // Move to submission step
       return await apiRequest("POST", "/api/evaluations/submit", data);
     },
     onSuccess: (data) => {
@@ -67,6 +68,7 @@ export default function Submit() {
         description: error.message || "Failed to submit essay. Please try again.",
         variant: "destructive",
       });
+      setCurrentStep(2); // Reset on error
     },
   });
 
@@ -382,7 +384,6 @@ export default function Submit() {
                   size="lg"
                   disabled={submitMutation.isPending}
                   data-testid="button-submit-for-grading"
-                  onClick={() => setCurrentStep(3)}
                 >
                   {submitMutation.isPending ? (
                     <>
@@ -401,6 +402,40 @@ export default function Submit() {
           </Card>
         </form>
       </Form>
+
+      {/* AI Evaluation Progress Indicator */}
+      {submitMutation.isPending && (
+        <Card className="border-primary">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <Loader2 className="w-6 h-6 animate-spin text-primary flex-shrink-0 mt-1" />
+              <div className="flex-1 space-y-3">
+                <div>
+                  <h3 className="font-semibold text-lg">AI is Evaluating Your Essay</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Our AI is carefully analyzing your work against the rubric criteria. This may
+                    take a few moments...
+                  </p>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-chart-1" />
+                    <span className="text-muted-foreground">Reading your essay</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-chart-1" />
+                    <span className="text-muted-foreground">Analyzing rubric criteria</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="font-medium">Generating detailed feedback</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
