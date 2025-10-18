@@ -148,6 +148,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug endpoint to check if API key is loaded
+  app.get("/api/debug/env", (req, res) => {
+    res.json({
+      hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      keyLength: process.env.GEMINI_API_KEY?.length || 0,
+      keyPrefix: process.env.GEMINI_API_KEY?.substring(0, 10) || "none"
+    });
+  });
+
   // Schema for essay submission
   const submitEvaluationSchema = z.object({
     essayTitle: z.string().min(1),
