@@ -1,12 +1,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SiGoogle } from "react-icons/si";
+import { LogIn } from "lucide-react";
 import { FileText } from "lucide-react";
 
 export default function Login() {
-  const handleGoogleLogin = () => {
-    window.location.href = "/auth/google";
+  const handleLogin = () => {
+    window.location.href = "/login";
   };
 
   return (
@@ -31,13 +31,13 @@ export default function Login() {
               Sign in to access your essay evaluations and receive AI-powered feedback
             </p>
             <Button
-              onClick={handleGoogleLogin}
+              onClick={handleLogin}
               className="w-full h-12 text-lg"
               size="lg"
-              data-testid="button-google-signin"
+              data-testid="button-auth0-signin"
             >
-              <SiGoogle className="w-5 h-5 mr-3" />
-              Sign in with Google
+              <LogIn className="w-5 h-5 mr-3" />
+              Sign in with Auth0
             </Button>
           </div>
           
