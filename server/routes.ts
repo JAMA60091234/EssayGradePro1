@@ -23,9 +23,11 @@ declare global {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const BASE_URL = process.env.REPL_SLUG 
-  ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
-  : "http://localhost:5000";
+const BASE_URL = process.env.REPLIT_DEPLOYMENT
+  ? `https://${process.env.REPL_SLUG}.replit.app`
+  : process.env.REPL_SLUG 
+    ? `https://${process.env.REPL_SLUG}-${process.env.REPL_OWNER}.replit.dev`
+    : "http://localhost:5000";
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "your-secret-key-change-this-in-production";
 const USE_GOOGLE = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
